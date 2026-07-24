@@ -11,7 +11,7 @@
 
 <table>
 <tr>
-<td valign="top"><img src="./aditya-ascii.svg" width="370" alt="Aditya Zore — ASCII portrait" /></td>
+<td valign="top"><img src="./avi-ascii.svg" width="370" alt="Aditya Zore — ASCII portrait" /></td>
 <td valign="top">
 
 <img src="./info-card.svg" width="490" alt="Aditya Zore — experience, stack, highlights" />
