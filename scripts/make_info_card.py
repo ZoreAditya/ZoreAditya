@@ -1,123 +1,130 @@
-#!/usr/bin/env python3
 """
-Scrape real daily contribution counts from GitHub's public, unauthenticated
-contributions endpoint (the same fragment the profile page itself uses) and
-write data/contributions.json with the raw days plus derived stats
-(current streak, longest streak, best day, monthly totals).
+Build a neofetch-style info card SVG (Andrew6rant style) to sit to the RIGHT of
+the ASCII portrait: colored key/value rows for work experience, tech stack, and
+highlights -- NOT GitHub stats (the contribution graph covers those).
 
-No token, no auth, no GraphQL -- just the public HTML GitHub already serves.
-Run daily by .github/workflows/update-profile-art.yml.
+Static content, hand-authored below. Lines fade/slide in on a short stagger so
+it feels like the panel is printing alongside the portrait. STATIC=1 emits the
+frozen state for Quick Look previews.
 """
-import datetime
-import json
+import html
 import os
-import re
-import sys
 
-import requests
-from bs4 import BeautifulSoup
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(HERE, "..", "info-card.svg")
+STATIC = bool(os.environ.get("STATIC"))
 
-USERNAME = os.environ.get("GH_PROFILE_USER", "ZoreAditya")
-URL = f"https://github.com/users/{USERNAME}/contributions"
-OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "contributions.json")
+W, H = 480, 376
+PAD = 20
+TITLEBAR_H = 30
+KEY_X = PAD
+VAL_X = PAD + 92
+LINE_H = 20.5
 
+BG = "#0d1117"
+BG2 = "#111722"
+FRAME = "#30363d"
+MUTED = "#7d8590"
+INK = "#c9d1d9"
+KEY = "#ffa657"      # orange keys (matches Andrew)
+SECTION = "#58a6ff"  # blue section headers
+GREEN = "#3fb950"
+ACCENT = "#22d3ee"
 
-def fetch_days():
-    resp = requests.get(URL, headers={"User-Agent": "profile-readme-bot/1.0"}, timeout=30)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+# content model: tuples describing each row
+# ("host",)                    -> "avi@github" + rule
+# ("kv", key, value)           -> orange key + light value
+# ("sec", title)               -> blue "— title —" rule
+# ("bul", text)                -> green dot + light text
+# ("gap",)                     -> vertical space
+ROWS = [
+    ("host",),
 
-    cells = soup.select("td.ContributionCalendar-day")
-    if not cells:
-        print("no calendar cells found -- github markup may have changed", file=sys.stderr)
-        sys.exit(1)
+    ("kv", "Now", "Software Engineer @ Capgemini"),
+    ("kv", "Prev", "Software Engineering Intern @ The Sparks Foundation"),
+    ("kv", "Edu", "B.Tech ENTC, Dr. D. Y. Patil Institute of Technology '24"),
 
-    days = []
-    for td in cells:
-        date = td.get("data-date")
-        if not date:
-            continue
-        td_id = td.get("id")
-        tooltip_el = soup.find("tool-tip", attrs={"for": td_id}) if td_id else None
-        text = tooltip_el.get_text(strip=True) if tooltip_el else ""
-        if re.search(r"no contributions", text, re.I):
-            count = 0
-        else:
-            m = re.match(r"(\d+)", text)
-            count = int(m.group(1)) if m else 0
-        days.append({"date": date, "count": count})
+    ("gap",),
 
-    days.sort(key=lambda d: d["date"])
-    return days
+    ("sec", "Stack"),
 
+    ("kv", "Languages", "Java/8, JavaScript"),
+    ("kv", "Backend", "Spring Boot, Spring Security, Hibernate, JPA"),
+    ("kv", "Web", "HTML, REST APIs"),
+    ("kv", "Dev Tools", "Docker, Maven, Git, Postman, Swagger"),
 
-def compute_current_streak(days):
-    idx = len(days) - 1
-    if days[idx]["count"] == 0:
-        idx -= 1  # today isn't over yet -- don't break the streak on it
-    streak = 0
-    end_idx = idx
-    while idx >= 0 and days[idx]["count"] > 0:
-        streak += 1
-        idx -= 1
-    start_idx = idx + 1
-    if streak == 0:
-        return 0, None, None
-    return streak, days[start_idx]["date"], days[end_idx]["date"]
+    ("gap",),
+
+    ("sec", "Highlights"),
+
+    ("bul", "Ranked #1 among 40 associates in Capgemini's Cards Practice competency program"),
+    ("bul", "Solved 220+ LeetCode problems • Beats 82.6% in algorithmic challenges"),
+]
 
 
-def compute_longest_streak(days):
-    longest = run = 0
-    longest_start = longest_end = None
-    run_start_idx = None
-    for i, d in enumerate(days):
-        if d["count"] > 0:
-            if run == 0:
-                run_start_idx = i
-            run += 1
-            if run > longest:
-                longest = run
-                longest_start = days[run_start_idx]["date"]
-                longest_end = days[i]["date"]
-        else:
-            run = 0
-    return longest, longest_start, longest_end
+def esc(s):
+    return html.escape(s)
 
 
-def build_data(days):
-    total = sum(d["count"] for d in days)
-    active_days = sum(1 for d in days if d["count"] > 0)
-    best = max(days, key=lambda d: d["count"])
-    cur_len, cur_start, cur_end = compute_current_streak(days)
-    long_len, long_start, long_end = compute_longest_streak(days)
-
-    monthly = {}
-    for d in days:
-        key = d["date"][:7]
-        monthly[key] = monthly.get(key, 0) + d["count"]
-    monthly_list = [{"month": k, "total": v} for k, v in sorted(monthly.items())]
-
-    return {
-        "username": USERNAME,
-        "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "range": {"start": days[0]["date"], "end": days[-1]["date"]},
-        "total_contributions": total,
-        "active_days": active_days,
-        "avg_per_active_day": round(total / active_days, 1) if active_days else 0,
-        "current_streak": {"length": cur_len, "start": cur_start, "end": cur_end},
-        "longest_streak": {"length": long_len, "start": long_start, "end": long_end},
-        "best_day": {"date": best["date"], "count": best["count"]},
-        "monthly": monthly_list,
-        "days": days,
-    }
+def rise(inner, i):
+    """fade + slight upward slide, staggered by row index; freezes visible."""
+    if STATIC:
+        return f"<g>{inner}</g>"
+    delay = 0.15 + i * 0.06
+    return (f'<g opacity="0" transform="translate(0,5)">{inner}'
+            f'<animate attributeName="opacity" from="0" to="1" begin="{delay:.2f}s" dur="0.4s" fill="freeze"/>'
+            f'<animateTransform attributeName="transform" type="translate" from="0 5" to="0 0" '
+            f'begin="{delay:.2f}s" dur="0.4s" fill="freeze" calcMode="spline" keySplines="0.2 0.8 0.2 1"/></g>')
 
 
-if __name__ == "__main__":
-    days = fetch_days()
-    data = build_data(days)
-    os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
-    with open(OUT_PATH, "w") as f:
-        json.dump(data, f, indent=2)
-    print(f"wrote {OUT_PATH}: {data['total_contributions']} contributions, "
-          f"current streak {data['current_streak']['length']}, "
-          f"longest streak {data['longest_streak']['length']}")
+parts = [
+    f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
+    f'font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">',
+    '<defs>'
+    f'<linearGradient id="ibg" x1="0" y1="0" x2="0" y2="1">'
+    f'<stop offset="0" stop-color="{BG2}"/><stop offset="1" stop-color="{BG}"/></linearGradient></defs>',
+    f'<rect width="{W}" height="{H}" rx="12" fill="url(#ibg)"/>',
+    f'<rect x="0.5" y="0.5" width="{W-1}" height="{H-1}" rx="12" fill="none" stroke="{FRAME}"/>',
+    f'<line x1="0" y1="{TITLEBAR_H}" x2="{W}" y2="{TITLEBAR_H}" stroke="{FRAME}"/>',
+]
+for i, dotcol in enumerate(["#ff5f56", "#ffbd2e", "#27c93f"]):
+    parts.append(f'<circle cx="{PAD + i*16}" cy="{TITLEBAR_H/2}" r="5" fill="{dotcol}"/>')
+parts.append(f'<text x="{W/2}" y="{TITLEBAR_H/2 + 4}" fill="{MUTED}" font-size="12" '
+             f'text-anchor="middle">avi@github: ~$ neofetch</text>')
+
+y = TITLEBAR_H + 30
+for i, row in enumerate(ROWS):
+    kind = row[0]
+    if kind == "gap":
+        y += LINE_H * 0.5
+        continue
+    if kind == "host":
+        inner = (f'<text x="{KEY_X}" y="{y:.1f}" font-size="14" font-weight="700">'
+                 f'<tspan fill="{GREEN}">avi</tspan><tspan fill="{MUTED}">@</tspan>'
+                 f'<tspan fill="{ACCENT}">github</tspan></text>'
+                 f'<line x1="{KEY_X+96}" y1="{y-4:.1f}" x2="{W-PAD}" y2="{y-4:.1f}" '
+                 f'stroke="{FRAME}" stroke-opacity="0.8"/>')
+    elif kind == "sec":
+        title = esc(row[1])
+        inner = (f'<text x="{KEY_X}" y="{y:.1f}" fill="{SECTION}" font-size="12.5" font-weight="700">'
+                 f'&#8212; {title}</text>'
+                 f'<line x1="{KEY_X + 12 + len(row[1])*8}" y1="{y-4:.1f}" x2="{W-PAD}" y2="{y-4:.1f}" '
+                 f'stroke="{FRAME}" stroke-opacity="0.8"/>')
+    elif kind == "kv":
+        key, val = esc(row[1]), esc(row[2])
+        inner = (f'<text x="{KEY_X}" y="{y:.1f}" fill="{KEY}" font-size="12.5" font-weight="700">{key}</text>'
+                 f'<text x="{VAL_X}" y="{y:.1f}" fill="{INK}" font-size="12.5">{val}</text>')
+    elif kind == "bul":
+        txt = esc(row[1])
+        inner = (f'<circle cx="{KEY_X+3}" cy="{y-4:.1f}" r="2.5" fill="{GREEN}"/>'
+                 f'<text x="{KEY_X+14}" y="{y:.1f}" fill="{INK}" font-size="12.5">{txt}</text>')
+    else:
+        continue
+    parts.append(rise(inner, i))
+    y += LINE_H
+
+parts.append("</svg>")
+svg = "".join(parts)
+with open(OUT, "w") as f:
+    f.write(svg)
+print("wrote", OUT, len(svg), "bytes;", W, "x", H, "content_bottom", round(y))
