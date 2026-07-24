@@ -88,21 +88,12 @@ Thriller & Horror Movies 🎬
 </p>
 
 
-<h3><code>aditya@github ~ $ ./stats.sh</code></h3>
-
-<img src="https://github-readme-stats.vercel.app/api?username=ZoreAditya&theme=dark&hide_border=false&include_all_commits=false&count_private=false" />
-
-<br>
-
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=ZoreAditya&theme=dark&hide_border=false&layout=compact" />
 
 
-<h3><code>aditya@github ~ $ fortune</code></h3>
+<h3><code>aditya@github ~ quotes</code></h3>
 
 <img src="https://quotes-github-readme.vercel.app/api?type=horizontal&theme=radical" />
 
 <br>
-
-<img src="https://visitcount.itsvg.in/api?id=ZoreAditya&icon=0&color=0"/>
 
 </div>
