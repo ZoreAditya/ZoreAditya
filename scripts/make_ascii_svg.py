@@ -1,3 +1,6 @@
+
+
+
 """
 Convert a portrait photo into a CLEAN, monochrome ASCII-art SVG (Andrew6rant
 style: one light-gray color, subject isolated on a dark background) that "types"
