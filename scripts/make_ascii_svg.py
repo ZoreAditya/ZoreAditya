@@ -1,6 +1,3 @@
-
-
-
 """
 Convert a portrait photo into a CLEAN, monochrome ASCII-art SVG (Andrew6rant
 style: one light-gray color, subject isolated on a dark background) that "types"
@@ -26,8 +23,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "source-prepped.png")
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, "..", "avi-ascii.svg")
 
-COLS = 100
-ROWS = 53
+COLS = 56
+ROWS = 22
 CELL_W = 8
 CELL_H = 15
 RAMP = " .`:-=+*cs#%@"  # bright(sparse) -> dark(dense); leading space clears bg
@@ -45,8 +42,8 @@ TITLEBAR_H = 30
 STATUS_H = 30
 ART_W = COLS * CELL_W
 ART_H = ROWS * CELL_H
-CANVAS_W = ART_W + PAD * 2
-CANVAS_H = TITLEBAR_H + ART_H + STATUS_H + PAD
+CANVAS_W = 500
+CANVAS_H = 440
 
 BG = "#0d1117"
 BG2 = "#111722"
@@ -84,7 +81,7 @@ for y in range(ROWS):
         chars.append(RAMP[idx])
     rows_txt.append("".join(chars))
 
-art_top = TITLEBAR_H + PAD * 0.35
+art_top = TITLEBAR_H + max(10,(440-TITLEBAR_H-STATUS_H-ROWS*CELL_H)//2)
 
 # ---- 2. assemble SVG ------------------------------------------------------
 parts = []
