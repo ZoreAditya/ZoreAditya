@@ -17,7 +17,15 @@ IN_PATH = os.path.join(HERE, "..", "data", "contributions.json")
 OUT_PATH = os.path.join(HERE, "..", "contrib-heatmap.svg")
 
 # GitHub-ish green ramp: empty -> brightest. Level 5 is a brighter neon top end.
-PALETTE = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353", "#69f0a0"]
+# PALETTE = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353", "#69f0a0"]
+PALETTE = [
+    "#ebedf0",  # 0 contributions (light gray)
+    "#9be9a8",  # Level 1
+    "#40c463",  # Level 2
+    "#30a14e",  # Level 3
+    "#216e39",  # Level 4
+    "#0e4429"   # Level 5
+]
 
 CELL = 12
 GAP = 3
